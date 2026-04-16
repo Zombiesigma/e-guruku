@@ -1,0 +1,172 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - fullName: string (required)
+    //   - role: string (required, enum: admin, kepala_sekolah, guru, wali_kelas, etc.)
+    //   - nip: string (optional)
+    //   - rank: string (optional)
+    //   - workUnit: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: students
+    // Document ID: {studentId}
+    // Fields:
+    //   - nisn: string (required, unique)
+    //   - name: string (required)
+    //   - birthPlace: string
+    //   - birthDate: string (ISO 8601)
+    //   - gender: string (L/P)
+    //   - parentName: string
+    //   - parentPhone: string
+    //   - address: string
+    //   - extracurricular: string
+    //   - photoUrl: string
+    //   - healthHistory: string
+    //   - height: number
+    //   - weight: number
+    //   - isActive: bool (required)
+    //   - classId: string
+    //   - createdAt: timestamp
+    //
+    // [Other collections following similar patterns]
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData().role == role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        ((request.auth.token.email == "gunturfadilah140@gmail.com" && request.auth.token.email_verified == true) || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin'));
+    }
+
+    function isStaff() {
+      return isAuthenticated() && 
+        ((request.auth.token.email == "gunturfadilah140@gmail.com" && request.auth.token.email_verified == true) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          getUserData().role in ['admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'bp_bk', 'tu', 'kurikulum', 'humas', 'perpustakaan']));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Validation Functions
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() < 128 &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+             isValidEmail(data.email) && data.email.size() < 100 &&
+             data.role in ['admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'bp_bk', 'tu', 'kurikulum', 'humas', 'perpustakaan'] &&
+             (!('nip' in data) || (data.nip is string && data.nip.size() < 50)) &&
+             (!('rank' in data) || (data.rank is string && data.rank.size() < 50)) &&
+             (!('workUnit' in data) || (data.workUnit is string && data.workUnit.size() < 100));
+    }
+
+    function isValidStudent(data) {
+      return data.nisn is string && data.nisn.size() > 0 && data.nisn.size() < 50 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.gender in ['L', 'P'] &&
+             data.isActive is bool &&
+             (!('address' in data) || (data.address is string && data.address.size() < 500)) &&
+             (!('parentName' in data) || (data.parentName is string && data.parentName.size() < 100)) &&
+             (!('parentPhone' in data) || (data.parentPhone is string && data.parentPhone.size() < 20));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role));
+    }
+
+    match /students/{studentId} {
+      allow read: if isStaff();
+      allow create: if isStaff() && isValidStudent(request.resource.data);
+      allow update: if isStaff() && isValidStudent(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /classes/{classId} {
+      allow read: if isStaff();
+      allow write: if isAdmin() || hasRole('kurikulum');
+    }
+
+    match /attendances/{attendanceId} {
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
+
+    match /grades/{gradeId} {
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
+
+    match /behaviors/{behaviorId} {
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
+
+    match /admin_messages/{messageId} {
+      allow read, delete: if isAdmin();
+      allow create: if isAuthenticated() && 
+                      request.resource.data.senderId == request.auth.uid &&
+                      request.resource.data.status == 'unread';
+    }
+
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || hasRole('kurikulum') || hasRole('humas');
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update: if isOwner(resource.data.userId);
+      allow create: if isStaff();
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || hasRole('kurikulum');
+    }
+  }
+}
