@@ -25,6 +25,15 @@ body {
   @apply bg-slate-950 text-slate-50;
 }
 
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* SweetAlert2 Custom Styling for Dark Mode */
 .dark .swal2-popup {
   @apply bg-slate-900 text-slate-100 border border-slate-800;

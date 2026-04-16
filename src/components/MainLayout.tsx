@@ -134,7 +134,7 @@ export const MainLayout: React.FC<LayoutProps> = ({ children, activeTab, setActi
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 overflow-y-auto pr-2 space-y-1">
           {menuItems.map((item) => (
             <SidebarItem
               key={item.id}
@@ -239,7 +239,7 @@ export const MainLayout: React.FC<LayoutProps> = ({ children, activeTab, setActi
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-[3rem] p-8 max-h-[85vh] overflow-y-auto shadow-2xl"
+              className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-[3rem] p-8 max-h-[85vh] overflow-y-auto hide-scrollbar shadow-2xl"
             >
               <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mb-8" />
               

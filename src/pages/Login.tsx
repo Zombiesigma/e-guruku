@@ -1,6 +1,6 @@
 import React from 'react';
-import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 import { GraduationCap } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -9,19 +9,6 @@ export const Login: React.FC = () => {
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err: any) {
-      console.error(err);
-      setError('Gagal masuk dengan Google. Silakan coba lagi.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEmailLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,21 +91,6 @@ export const Login: React.FC = () => {
             {loading ? 'Memproses...' : 'Masuk dengan Email'}
           </button>
         </form>
-
-        <div className="flex items-center gap-3 mb-6">
-          <span className="h-px flex-1 bg-slate-200" />
-          <span className="text-sm text-slate-400">atau</span>
-          <span className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <button
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 py-4 rounded-2xl font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-200 transition-all duration-200 disabled:opacity-50"
-        >
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-6 h-6" />
-          {loading ? 'Memproses...' : 'Masuk dengan Google'}
-        </button>
 
         <p className="mt-10 text-center text-xs text-slate-400">
           Dengan masuk, Anda menyetujui Ketentuan Layanan dan Kebijakan Privasi kami.
